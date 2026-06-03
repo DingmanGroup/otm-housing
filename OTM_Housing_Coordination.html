@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OTM Housing Coordination — Field Architecture</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 14px;
+    background: #f7f7f5;
+    color: #1a1a1a;
+    line-height: 1.6;
+  }
+
+  /* ── Top Nav ── */
+  .top-nav {
+    background: #1a1a1a;
+    padding: 14px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .nav-brand { color: #fff; font-size: 13px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+  .nav-brand span { color: #f5a623; }
+  .nav-tabs { display: flex; gap: 4px; }
+  .nav-tab {
+    color: #888;
+    font-size: 12px;
+    padding: 6px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    transition: background 0.15s, color 0.15s;
+  }
+  .nav-tab:hover { background: #2a2a2a; color: #ccc; }
+  .nav-tab.active { background: #2e2e2e; color: #fff; }
+  .nav-right { font-size: 11px; color: #555; letter-spacing: 0.06em; text-transform: uppercase; }
+
+  /* ── Page wrapper ── */
+  .page { display: none; padding: 32px; max-width: 1100px; margin: 0 auto; }
+  .page.active { display: block; }
+
+  /* ── Section card ── */
+  .card {
+    background: #fff;
+    border: 1px solid #e8e8e4;
+    border-radius: 8px;
+    padding: 28px 32px;
+    margin-bottom: 20px;
+  }
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #f0f0ec;
+  }
+  .card-title { font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #1a1a1a; }
+  .card-badge { font-size: 11px; color: #888; margin-left: 10px; font-weight: 400; text-transform: none; letter-spacing: 0; }
+  .card-right { font-size: 11px; color: #aaa; }
+
+  /* ── Field elements ── */
+  .field-label { font-size: 12px; font-weight: 600; color: #333; margin-bottom: 3px; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+  .field-note { font-size: 11px; color: #aaa; font-style: italic; margin-top: 5px; }
+  .required { color: #e53935; }
+
+  .badge { font-size: 10px; padding: 2px 8px; border-radius: 20px; font-weight: 600; white-space: nowrap; }
+  .badge-required { background: #fce8e8; color: #c62828; }
+  .badge-eos { background: #e8f5e9; color: #2e7d32; }
+  .badge-conditional { background: #fce8e8; color: #c62828; }
+  .badge-origin { background: #fef3e2; color: #e67e00; }
+  .badge-dest { background: #ede9f8; color: #7c6fcd; }
+
+  .select-box {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 9px 12px;
+    font-size: 14px;
+    color: #bbb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #fff;
+    width: 100%;
+    margin-top: 5px;
+  }
+  .select-box.disabled { background: #fafafa; border-color: #eee; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+  .col-l { padding-right: 28px; border-right: 2.5px solid #f5a623; }
+  .col-r { padding-left: 28px; border-left: 2.5px solid #7c6fcd; }
+
+  .divider { border: none; border-top: 1px solid #f0f0ec; margin: 20px 0; }
+
+  .checkbox-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+  .checkbox-box { width: 15px; height: 15px; border: 1.5px solid #ccc; border-radius: 3px; display: inline-block; flex-shrink: 0; }
+
+  .tag-group { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
+  .tag {
+    font-size: 11px;
+    color: #555;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    padding: 3px 11px;
+    background: #fff;
+    cursor: pointer;
+    transition: background 0.1s, border-color 0.1s;
+  }
+  .tag:hover { background: #f5f5f5; border-color: #bbb; }
+  .tag.selected-origin { background: #fef3e2; border-color: #f5a623; color: #a05c00; }
+  .tag.selected-dest { background: #ede9f8; border-color: #7c6fcd; color: #4a3a8a; }
+
+  .multi-note { font-size: 11px; color: #aaa; font-style: italic; text-align: right; margin-bottom: 6px; }
+
+  /* ── Stage flow ── */
+  .stage-flow { display: flex; align-items: center; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; margin: 8px 0 4px; }
+  .stage-node {
+    font-size: 12px;
+    color: #555;
+    white-space: nowrap;
+    padding: 5px 0;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .stage-node:hover { color: #1a1a1a; border-bottom-color: #ccc; }
+  .stage-node.active { color: #e67e00; border-bottom-color: #f5a623; font-weight: 600; }
+  .stage-node.active-dest { color: #7c6fcd; border-bottom-color: #7c6fcd; font-weight: 600; }
+  .stage-node.declined { color: #e53935; }
+  .arrow { font-size: 11px; color: #ccc; padding: 0 7px; flex-shrink: 0; }
+  .track-desc { font-size: 11px; color: #bbb; font-style: italic; margin-top: 3px; }
+  .track-label { font-size: 12px; color: #888; margin-bottom: 5px; display: flex; align-items: center; gap: 7px; }
+  .track-cond { font-size: 11px; color: #bbb; }
+  .track-divider { border: none; border-top: 1px solid #f5f5f0; margin: 16px 0; }
+
+  /* ── Instructions page ── */
+  .instructions-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+
+  .step-card {
+    background: #fff;
+    border: 1px solid #e8e8e4;
+    border-radius: 8px;
+    padding: 24px;
+  }
+  .step-number {
+    width: 28px;
+    height: 28px;
+    background: #1a1a1a;
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    flex-shrink: 0;
+  }
+  .step-title { font-size: 13px; font-weight: 700; color: #1a1a1a; margin-bottom: 8px; }
+  .step-body { font-size: 13px; color: #555; line-height: 1.7; }
+  .step-body ol { padding-left: 16px; margin-top: 8px; }
+  .step-body ol li { margin-bottom: 6px; }
+  .step-body .code { font-family: monospace; font-size: 11px; background: #f5f5f0; border: 1px solid #e8e8e4; border-radius: 3px; padding: 2px 7px; color: #333; }
+  .step-body .highlight { background: #fffbf0; border: 1px solid #f5e0a0; border-radius: 4px; padding: 8px 12px; margin-top: 10px; font-size: 12px; color: #7a5c00; }
+  .step-body .tip { background: #f0f7ff; border: 1px solid #c8e0f8; border-radius: 4px; padding: 8px 12px; margin-top: 10px; font-size: 12px; color: #1a4f7a; }
+
+  .full-step-card {
+    background: #fff;
+    border: 1px solid #e8e8e4;
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+  .step-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+
+  .divider-label {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 28px 0 20px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #aaa;
+  }
+  .divider-label::before, .divider-label::after {
+    content: '';
+    flex: 1;
+    border-top: 1px solid #e8e8e4;
+  }
+
+  .page-title-block { margin-bottom: 28px; }
+  .page-title-block h2 { font-size: 20px; font-weight: 700; color: #1a1a1a; margin-bottom: 6px; }
+  .page-title-block p { font-size: 13px; color: #888; max-width: 600px; }
+
+  .embed-code-block {
+    background: #1a1a1a;
+    border-radius: 6px;
+    padding: 16px 20px;
+    margin-top: 12px;
+    font-family: monospace;
+    font-size: 12px;
+    color: #a8d8a8;
+    line-height: 1.6;
+    overflow-x: auto;
+    white-space: pre;
+  }
+
+  @media (max-width: 700px) {
+    .two-col { grid-template-columns: 1fr; }
+    .col-l { padding-right: 0; border-right: none; border-bottom: 2.5px solid #f5a623; padding-bottom: 20px; margin-bottom: 20px; }
+    .col-r { padding-left: 0; border-left: none; }
+    .instructions-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<div class="top-nav">
+  <div class="nav-brand"><span>OTM</span> · Housing Coordination</div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('housing')">Housing Coordination Section</button>
+    <button class="nav-tab" onclick="showPage('field8')">Field 8 — Agent Stage Flow</button>
+    <button class="nav-tab" onclick="showPage('instructions')">SharePoint Instructions</button>
+  </div>
+  <div class="nav-right">Field Architecture · Build Spec</div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- PAGE 1: HOUSING COORDINATION SECTION        -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="page active" id="page-housing">
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <span class="card-title">Housing Coordination</span>
+        <span class="card-badge">New section</span>
+      </div>
+      <div class="card-right">9 fields · edit mode</div>
+    </div>
+
+    <!-- Field 1: Housing Intent -->
+    <div style="margin-bottom:22px;">
+      <div class="field-label">
+        Housing Intent <span class="required">*</span>
+        <span class="badge badge-required">Always required</span>
+      </div>
+      <div class="select-box"><span>— Select —</span><span>&#8964;</span></div>
+      <div class="field-note">Drives visibility of fields 2, 3, 4, 5, 6, and 7 below</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Fields 2 & 3: Agent Selection -->
+    <div class="two-col" style="margin-bottom:22px;">
+      <div class="col-l">
+        <div class="field-label" style="font-size:11px; color:#888; font-weight:500;">Origin Agent Selection <span style="color:#bbb; font-weight:400;">When origin sale</span></div>
+        <div class="select-box disabled"><span>— Select —</span><span>&#8964;</span></div>
+        <div class="field-note">Enabled when intent includes origin sale</div>
+      </div>
+      <div class="col-r">
+        <div class="field-label" style="font-size:11px; color:#888; font-weight:500;">Destination Agent Selection <span style="color:#bbb; font-weight:400;">When buy or rent</span></div>
+        <div class="select-box disabled"><span>— Select —</span><span>&#8964;</span></div>
+        <div class="field-note">Enabled when intent includes destination buy or rent</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Fields 4 & 5: Strategy Call / RE Transaction -->
+    <div class="two-col" style="margin-bottom:22px;">
+      <div class="col-l" style="border-right:none; padding-right:28px;">
+        <div class="field-label" style="font-size:11px; color:#888; font-weight:500;">Housing Strategy Call Completed <span style="color:#bbb; font-weight:400;">Intent ≠ No Housing Transaction</span></div>
+        <div class="checkbox-row">
+          <span class="checkbox-box"></span>
+          <span style="font-size:13px; color:#555;">Completed</span>
+        </div>
+        <div class="field-note">Confirms housing coordination conversation on intro call</div>
+      </div>
+      <div class="col-r" style="border-left:none; padding-left:28px;">
+        <div class="field-label" style="font-size:11px; color:#888; font-weight:500;">RE Transaction Captured <span style="color:#bbb; font-weight:400;">At close of file</span> <span class="badge badge-eos">EOS KPI</span></div>
+        <div class="select-box disabled"><span>— Select —</span><span>&#8964;</span></div>
+        <div class="field-note">EOS KPI field — tracked at close</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Fields 6: TDG Decline Reason -->
+    <div style="margin-bottom:22px;">
+      <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px;">
+        <div class="field-label">TDG Decline Reason <span style="font-size:11px; color:#aaa; font-weight:400; margin-left:4px;">Only when External Agent selected</span></div>
+        <div class="multi-note">Multi-select — select all that apply</div>
+      </div>
+      <div class="two-col">
+        <div class="col-l">
+          <div style="font-size:11px; color:#888; margin-bottom:7px; display:flex; align-items:center; gap:6px;">Origin Decline Reason <span class="badge badge-origin">Origin</span> <span style="color:#bbb; font-size:10px;">Origin = External</span></div>
+          <div style="font-size:11px; color:#bbb; margin-bottom:6px;">Select all that apply…</div>
+          <div class="tag-group" id="origin-decline">
+            <span class="tag" onclick="toggleTag(this,'origin')">Already engaged before TDG intro</span>
+            <span class="tag" onclick="toggleTag(this,'origin')">Team recommended agent</span>
+            <span class="tag" onclick="toggleTag(this,'origin')">Sponsor agent requirement</span>
+            <span class="tag" onclick="toggleTag(this,'origin')">Prior relationship</span>
+            <span class="tag" onclick="toggleTag(this,'origin')">Introduced too late</span>
+            <span class="tag" onclick="toggleTag(this,'origin')">Teammate referral</span>
+            <span class="tag" onclick="toggleTag(this,'origin')">Advisor referral</span>
+            <span class="tag" onclick="toggleTag(this,'origin')">Customer prefers independence</span>
+            <span class="tag" onclick="toggleTag(this,'origin')">Agent refused TDG coordination</span>
+            <span class="tag" onclick="toggleTag(this,'origin')">Other</span>
+            <span class="tag" onclick="toggleTag(this,'origin')">Unknown</span>
+          </div>
+          <div class="field-note">Why did the player, coach, or staff member use an external agent on the origin side?</div>
+        </div>
+        <div class="col-r">
+          <div style="font-size:11px; color:#888; margin-bottom:7px; display:flex; align-items:center; gap:6px;">Destination Decline Reason <span class="badge badge-dest">Destination</span> <span style="color:#bbb; font-size:10px;">Destination = External</span></div>
+          <div style="font-size:11px; color:#bbb; margin-bottom:6px;">Select all that apply…</div>
+          <div class="tag-group" id="dest-decline">
+            <span class="tag" onclick="toggleTag(this,'dest')">Already engaged before TDG intro</span>
+            <span class="tag" onclick="toggleTag(this,'dest')">Team recommended agent</span>
+            <span class="tag" onclick="toggleTag(this,'dest')">Sponsor agent requirement</span>
+            <span class="tag" onclick="toggleTag(this,'dest')">Prior relationship</span>
+            <span class="tag" onclick="toggleTag(this,'dest')">Introduced too late</span>
+            <span class="tag" onclick="toggleTag(this,'dest')">Teammate referral</span>
+            <span class="tag" onclick="toggleTag(this,'dest')">Advisor referral</span>
+            <span class="tag" onclick="toggleTag(this,'dest')">Customer prefers independence</span>
+            <span class="tag" onclick="toggleTag(this,'dest')">Agent refused TDG coordination</span>
+            <span class="tag" onclick="toggleTag(this,'dest')">Other</span>
+            <span class="tag" onclick="toggleTag(this,'dest')">Unknown</span>
+          </div>
+          <div class="field-note">Why did the player, coach, or staff member use an external agent on the destination side?</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Fields 7: RE Adoption Reason -->
+    <div>
+      <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px;">
+        <div class="field-label">RE Adoption Reason <span style="font-size:11px; color:#aaa; font-weight:400; margin-left:4px;">Only when TDG Network Agent selected</span></div>
+        <div class="multi-note">Multi-select — select all that apply</div>
+      </div>
+      <div class="two-col">
+        <div class="col-l">
+          <div style="font-size:11px; color:#888; margin-bottom:7px; display:flex; align-items:center; gap:6px;">Origin Adoption Reason <span class="badge badge-origin">Origin</span> <span style="color:#bbb; font-size:10px;">Origin = TDG Network</span></div>
+          <div style="font-size:11px; color:#bbb; margin-bottom:6px;">Select all that apply…</div>
+          <div class="tag-group">
+            <span class="tag" onclick="toggleTag(this,'origin')">Closing rebate</span>
+            <span class="tag" onclick="toggleTag(this,'origin')">TDG coordination advantage</span>
+            <span class="tag" onclick="toggleTag(this,'origin')">Trusted TDG referral</span>
+            <span class="tag" onclick="toggleTag(this,'origin')">Speed of relocation</span>
+            <span class="tag" onclick="toggleTag(this,'origin')">Privacy and discretion</span>
+            <span class="tag" onclick="toggleTag(this,'origin')">Prior TDG success story</span>
+            <span class="tag" onclick="toggleTag(this,'origin')">Team recommendation</span>
+            <span class="tag" onclick="toggleTag(this,'origin')">Advisor recommendation</span>
+            <span class="tag" onclick="toggleTag(this,'origin')">One-stop relocation platform</span>
+            <span class="tag" onclick="toggleTag(this,'origin')">Other</span>
+          </div>
+          <div class="field-note">Why did the player, coach, or staff member use a TDG agent on the origin side?</div>
+        </div>
+        <div class="col-r">
+          <div style="font-size:11px; color:#888; margin-bottom:7px; display:flex; align-items:center; gap:6px;">Destination Adoption Reason <span class="badge badge-dest">Destination</span> <span style="color:#bbb; font-size:10px;">Destination = TDG Network</span></div>
+          <div style="font-size:11px; color:#bbb; margin-bottom:6px;">Select all that apply…</div>
+          <div class="tag-group">
+            <span class="tag" onclick="toggleTag(this,'dest')">Closing rebate</span>
+            <span class="tag" onclick="toggleTag(this,'dest')">TDG coordination advantage</span>
+            <span class="tag" onclick="toggleTag(this,'dest')">Trusted TDG referral</span>
+            <span class="tag" onclick="toggleTag(this,'dest')">Speed of relocation</span>
+            <span class="tag" onclick="toggleTag(this,'dest')">Privacy and discretion</span>
+            <span class="tag" onclick="toggleTag(this,'dest')">Prior TDG success story</span>
+            <span class="tag" onclick="toggleTag(this,'dest')">Team recommendation</span>
+            <span class="tag" onclick="toggleTag(this,'dest')">Advisor recommendation</span>
+            <span class="tag" onclick="toggleTag(this,'dest')">One-stop relocation platform</span>
+            <span class="tag" onclick="toggleTag(this,'dest')">Other</span>
+          </div>
+          <div class="field-note">Why did the player, coach, or staff member use a TDG agent on the destination side?</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- PAGE 2: FIELD 8 STATUS FLOW                 -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="page" id="page-field8">
+  <div class="card">
+    <div class="card-header">
+      <div style="display:flex; align-items:baseline; gap:18px;">
+        <span class="card-title">External Agent Coordination Stage</span>
+        <span style="font-size:12px; color:#888;">Field 8</span>
+        <span style="font-size:12px; color:#888;">Status Flow</span>
+      </div>
+      <div class="card-right">SP Job · click a stage to set</div>
+    </div>
+
+    <!-- Agent Selectors -->
+    <div class="two-col" style="margin-bottom:24px;">
+      <div class="col-l">
+        <div class="field-label" style="font-size:11px; color:#888; font-weight:500;">Origin Agent Selection <span style="color:#bbb; font-weight:400;">When origin sale</span></div>
+        <div class="select-box"><span>— Select —</span><span>&#8964;</span></div>
+      </div>
+      <div class="col-r">
+        <div class="field-label" style="font-size:11px; color:#888; font-weight:500;">Destination Agent Selection <span style="color:#bbb; font-weight:400;">When buy or rent</span></div>
+        <div class="select-box"><span>— Select —</span><span>&#8964;</span></div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Stage Header -->
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
+      <div class="field-label">
+        External Agent Coordination Stage
+        <span class="badge badge-conditional">Only when External Agent selected</span>
+      </div>
+      <div style="font-size:11px; color:#aaa; font-style:italic;">Status flow — not a picklist</div>
+    </div>
+
+    <!-- Origin Track -->
+    <div style="margin-bottom:8px;">
+      <div class="track-label">
+        Origin External Agent Stage
+        <span class="badge badge-origin">Origin</span>
+        <span class="track-cond">Origin = External</span>
+      </div>
+      <div class="stage-flow" id="origin-stages">
+        <span class="stage-node" onclick="setStage('origin',0)">Agent Identified</span>
+        <span class="arrow">→</span>
+        <span class="stage-node" onclick="setStage('origin',1)">Intro Requested</span>
+        <span class="arrow">→</span>
+        <span class="stage-node" onclick="setStage('origin',2)">Introduction Received</span>
+        <span class="arrow">→</span>
+        <span class="stage-node" onclick="setStage('origin',3)">Coordination Call Scheduled</span>
+        <span class="arrow">→</span>
+        <span class="stage-node" onclick="setStage('origin',4)">Agent Coordinated</span>
+        <span class="arrow">→</span>
+        <span class="stage-node" onclick="setStage('origin',5)">Agent Onboarded to OTM</span>
+        <span class="arrow">→</span>
+        <span class="stage-node declined" onclick="setStage('origin',6)">Agent Declined</span>
+      </div>
+      <div class="track-desc">Tracks OTM's coordination progress with the player's, coach's, or staff member's external origin agent</div>
+    </div>
+
+    <div class="track-divider"></div>
+
+    <!-- Destination Track -->
+    <div>
+      <div class="track-label">
+        Destination External Agent Stage
+        <span class="badge badge-dest">Destination</span>
+        <span class="track-cond">Destination = External</span>
+      </div>
+      <div class="stage-flow" id="dest-stages">
+        <span class="stage-node" onclick="setStage('dest',0)">Agent Identified</span>
+        <span class="arrow">→</span>
+        <span class="stage-node" onclick="setStage('dest',1)">Intro Requested</span>
+        <span class="arrow">→</span>
+        <span class="stage-node" onclick="setStage('dest',2)">Introduction Received</span>
+        <span class="arrow">→</span>
+        <span class="stage-node" onclick="setStage('dest',3)">Coordination Call Scheduled</span>
+        <span class="arrow">→</span>
+        <span class="stage-node" onclick="setStage('dest',4)">Agent Coordinated</span>
+        <span class="arrow">→</span>
+        <span class="stage-node" onclick="setStage('dest',5)">Agent Onboarded to OTM</span>
+        <span class="arrow">→</span>
+        <span class="stage-node declined" onclick="setStage('dest',6)">Agent Declined</span>
+      </div>
+      <div class="track-desc">Tracks OTM's coordination progress with the player's, coach's, or staff member's external destination agent</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- PAGE 3: SHAREPOINT INSTRUCTIONS             -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="page" id="page-instructions">
+
+  <div style="margin-bottom:28px;">
+    <h2 style="font-size:18px; font-weight:700; color:#1a1a1a; margin-bottom:6px;">How to publish this page on SharePoint</h2>
+    <p style="font-size:13px; color:#888; max-width:620px;">Follow these steps to embed this interactive file directly into your company SharePoint site so colleagues can click and open it without downloading anything.</p>
+  </div>
+
+  <!-- PART 1: SAVE -->
+  <div class="divider-label">Part 1 — Save the file</div>
+
+  <div class="instructions-grid">
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-number">1</div>
+        <div class="step-title">Download this file</div>
+      </div>
+      <div class="step-body">
+        Click the download button at the top of this page (or use the link shared with you by Chris) to save the file to your computer.
+        <div class="highlight">The file is named <span class="code">OTM_Housing_Coordination.html</span> — keep that filename as-is.</div>
+      </div>
+    </div>
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-number">2</div>
+        <div class="step-title">Open SharePoint</div>
+      </div>
+      <div class="step-body">
+        Go to your company SharePoint site. In the left navigation or top bar, find <strong>Site Contents</strong> or navigate to the <strong>Documents</strong> library where your team stores internal resources.
+        <div class="tip">Ask your IT admin if you're not sure which SharePoint site to use.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PART 2: EMBED -->
+  <div class="divider-label">Part 2 — Create the SharePoint page</div>
+
+  <div class="full-step-card">
+    <div class="step-header">
+      <div class="step-number">3</div>
+      <div class="step-title">Create a new SharePoint page</div>
+    </div>
+    <div class="step-body">
+      <ol>
+        <li>In your SharePoint site, click <strong>+ New</strong> in the top toolbar</li>
+        <li>Select <strong>Page</strong> from the dropdown</li>
+        <li>Choose a blank template and click <strong>Create page</strong></li>
+        <li>Give the page a name — e.g. <span class="code">OTM Housing Coordination Fields</span></li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="full-step-card">
+    <div class="step-header">
+      <div class="step-number">4</div>
+      <div class="step-title">Add the Embed web part</div>
+    </div>
+    <div class="step-body">
+      <ol>
+        <li>On the new page, click the <strong>+</strong> button to add a web part</li>
+        <li>Search for and select <strong>Embed</strong></li>
+        <li>In the Embed panel that opens, click <strong>Enter code</strong> (not a URL)</li>
+        <li>Open the HTML file you downloaded in a text editor (right-click → Open with → Notepad or TextEdit)</li>
+        <li>Select all the content (<span class="code">Ctrl+A</span> / <span class="code">Cmd+A</span>) and copy it</li>
+        <li>Paste it into the Embed code box in SharePoint</li>
+        <li>Click <strong>Save</strong> on the Embed panel</li>
+      </ol>
+      <div class="highlight">The mockup will render live on the page immediately. You'll see the tabs and both field layouts appear in the preview.</div>
+    </div>
+  </div>
+
+  <!-- PART 3: PUBLISH -->
+  <div class="divider-label">Part 3 — Publish and share</div>
+
+  <div class="instructions-grid">
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-number">5</div>
+        <div class="step-title">Publish the page</div>
+      </div>
+      <div class="step-body">
+        Click <strong>Publish</strong> in the top right corner of the SharePoint page editor. This makes the page live and accessible to anyone you share it with.
+        <div class="tip">Use <strong>Save as draft</strong> first if you want to preview before publishing.</div>
+      </div>
+    </div>
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-number">6</div>
+        <div class="step-title">Copy and share the link</div>
+      </div>
+      <div class="step-body">
+        Once published, copy the page URL from your browser address bar. Share it via email, Teams, or Slack with your colleagues.
+        <div class="highlight">Anyone at your company with the link can click it and the page opens directly in their browser — no download required.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PART 4: PERMISSIONS -->
+  <div class="divider-label">Part 4 — If colleagues can't open it</div>
+
+  <div class="full-step-card">
+    <div class="step-header">
+      <div class="step-number">7</div>
+      <div class="step-title">Check permissions and custom scripts</div>
+    </div>
+    <div class="step-body">
+      If the page shows a blank embed or blocked content notice, your IT admin needs to enable one setting:
+      <ol style="margin-top:10px;">
+        <li>Go to <strong>SharePoint Admin Center</strong> (admin.microsoft.com → SharePoint)</li>
+        <li>Click <strong>Settings</strong> in the left nav</li>
+        <li>Find <strong>Custom Script</strong> and set it to <strong>Allow users to run custom script on personal sites</strong></li>
+        <li>This may take up to 24 hours to take effect</li>
+      </ol>
+      <div class="tip">If you don't have admin access, forward this step to your IT department with the subject line: "Enable custom script for SharePoint Embed web part."</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function showPage(id) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('page-' + id).classList.add('active');
+    event.target.classList.add('active');
+  }
+
+  function toggleTag(el, side) {
+    var cls = side === 'origin' ? 'selected-origin' : 'selected-dest';
+    el.classList.toggle(cls);
+  }
+
+  function setStage(track, idx) {
+    var containerId = track === 'origin' ? 'origin-stages' : 'dest-stages';
+    var cls = track === 'origin' ? 'active' : 'active-dest';
+    var container = document.getElementById(containerId);
+    var nodes = container.querySelectorAll('.stage-node');
+    nodes.forEach(function(n) { n.classList.remove('active', 'active-dest'); });
+    nodes[idx].classList.add(cls);
+  }
+</script>
+
+</body>
+</html>
