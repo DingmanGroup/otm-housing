@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OTM Housing Coordination — Field Architecture</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; background: #f7f7f5; color: #1a1a1a; line-height: 1.6; }
+
+  .top-nav { background: #1a1a1a; padding: 14px 32px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; flex-wrap: wrap; gap: 10px; }
+  .nav-brand { color: #fff; font-size: 13px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+  .nav-brand span { color: #f5a623; }
+  .nav-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+  .nav-tab { color: #888; font-size: 12px; padding: 6px 14px; border-radius: 4px; cursor: pointer; border: none; background: transparent; transition: background 0.15s, color 0.15s; }
+  .nav-tab:hover { background: #2a2a2a; color: #ccc; }
+  .nav-tab.active { background: #2e2e2e; color: #fff; }
+  .nav-right { font-size: 11px; color: #555; letter-spacing: 0.06em; text-transform: uppercase; }
+
+  .page { display: none; padding: 28px 24px; max-width: 1100px; margin: 0 auto; }
+  .page.active { display: block; }
+
+  .card { background: #fff; border: 1px solid #e8e8e4; border-radius: 8px; padding: 24px 28px; margin-bottom: 20px; }
+  .card-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #f0f0ec; flex-wrap: wrap; gap: 8px; }
+  .card-title { font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+  .card-badge { font-size: 11px; color: #888; margin-left: 8px; font-weight: 400; text-transform: none; letter-spacing: 0; }
+  .card-right { font-size: 11px; color: #aaa; }
+
+  .field-row { margin-bottom: 20px; }
+  .field-label { font-size: 12px; font-weight: 600; color: #333; margin-bottom: 5px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .field-note { font-size: 11px; color: #aaa; font-style: italic; margin-top: 4px; }
+  .required { color: #e53935; }
+
+  .badge { font-size: 10px; padding: 2px 8px; border-radius: 20px; font-weight: 600; white-space: nowrap; }
+  .badge-required { background: #fce8e8; color: #c62828; }
+  .badge-eos { background: #e8f5e9; color: #2e7d32; }
+  .badge-conditional { background: #fce8e8; color: #c62828; }
+  .badge-origin { background: #fef3e2; color: #e67e00; }
+  .badge-dest { background: #ede9f8; color: #7c6fcd; }
+
+  select {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    font-family: inherit;
+    color: #333;
+    background: #fff;
+    appearance: auto;
+    cursor: pointer;
+  }
+  select:disabled { background: #fafafa; color: #bbb; border-color: #eee; cursor: default; }
+  select:focus { outline: 2px solid #f5a623; outline-offset: 1px; }
+
+  input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: #f5a623;
+    flex-shrink: 0;
+  }
+  .checkbox-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+  .checkbox-label { font-size: 13px; color: #444; cursor: pointer; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+  .col-l { padding-right: 24px; border-right: 2.5px solid #f5a623; }
+  .col-r { padding-left: 24px; border-left: 2.5px solid #7c6fcd; }
+
+  .divider { border: none; border-top: 1px solid #f0f0ec; margin: 18px 0; }
+
+  .multi-note { font-size: 11px; color: #aaa; font-style: italic; text-align: right; margin-bottom: 6px; }
+
+  .tag-group { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
+  .tag {
+    font-size: 11px;
+    color: #555;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    padding: 4px 12px;
+    background: #fff;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s, color 0.12s;
+    user-select: none;
+  }
+  .tag:hover { background: #f5f5f5; border-color: #bbb; }
+  .tag.selected-origin { background: #fef3e2; border-color: #f5a623; color: #a05c00; font-weight: 600; }
+  .tag.selected-dest { background: #ede9f8; border-color: #7c6fcd; color: #4a3a8a; font-weight: 600; }
+
+  .stage-flow { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; margin: 8px 0 4px; }
+  .stage-node {
+    font-size: 12px;
+    color: #555;
+    white-space: nowrap;
+    padding: 5px 10px;
+    border: 1px solid #e8e8e4;
+    border-radius: 4px;
+    cursor: pointer;
+    background: #fff;
+    transition: all 0.12s;
+    user-select: none;
+  }
+  .stage-node:hover { background: #f5f5f5; border-color: #bbb; color: #1a1a1a; }
+  .stage-node.active { background: #fef3e2; border-color: #f5a623; color: #a05c00; font-weight: 600; }
+  .stage-node.active-dest { background: #ede9f8; border-color: #7c6fcd; color: #4a3a8a; font-weight: 600; }
+  .stage-node.declined { color: #e53935; border-color: #fcc; }
+  .stage-node.declined:hover { background: #fff5f5; }
+  .stage-node.declined.active { background: #fce8e8; border-color: #e53935; color: #c62828; font-weight: 600; }
+  .arrow { font-size: 11px; color: #ccc; flex-shrink: 0; }
+  .track-desc { font-size: 11px; color: #bbb; font-style: italic; margin-top: 4px; }
+  .track-label { font-size: 12px; color: #888; margin-bottom: 6px; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+  .track-cond { font-size: 11px; color: #bbb; }
+  .track-divider { border: none; border-top: 1px solid #f5f5f0; margin: 16px 0; }
+
+  /* Instructions */
+  .instructions-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .step-card { background: #fff; border: 1px solid #e8e8e4; border-radius: 8px; padding: 20px; }
+  .step-number { width: 26px; height: 26px; background: #1a1a1a; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; margin-bottom: 10px; }
+  .step-title { font-size: 13px; font-weight: 700; color: #1a1a1a; margin-bottom: 6px; }
+  .step-body { font-size: 13px; color: #555; line-height: 1.7; }
+  .step-body ol { padding-left: 16px; margin-top: 8px; }
+  .step-body ol li { margin-bottom: 5px; }
+  .code { font-family: monospace; font-size: 11px; background: #f5f5f0; border: 1px solid #e8e8e4; border-radius: 3px; padding: 2px 6px; color: #333; }
+  .highlight { background: #fffbf0; border: 1px solid #f5e0a0; border-radius: 4px; padding: 8px 12px; margin-top: 8px; font-size: 12px; color: #7a5c00; }
+  .tip { background: #f0f7ff; border: 1px solid #c8e0f8; border-radius: 4px; padding: 8px 12px; margin-top: 8px; font-size: 12px; color: #1a4f7a; }
+  .full-step-card { background: #fff; border: 1px solid #e8e8e4; border-radius: 8px; padding: 20px; margin-bottom: 16px; }
+  .step-header { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .divider-label { display: flex; align-items: center; gap: 12px; margin: 24px 0 16px; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #aaa; }
+  .divider-label::before, .divider-label::after { content: ''; flex: 1; border-top: 1px solid #e8e8e4; }
+
+  /* Housing Intent driven visibility */
+  .conditional-field { transition: opacity 0.2s; }
+  .conditional-field.hidden { opacity: 0.3; pointer-events: none; }
+
+  @media (max-width: 680px) {
+    .two-col { grid-template-columns: 1fr; }
+    .col-l { padding-right: 0; border-right: none; border-bottom: 2.5px solid #f5a623; padding-bottom: 18px; margin-bottom: 18px; }
+    .col-r { padding-left: 0; border-left: none; }
+    .instructions-grid { grid-template-columns: 1fr; }
+    .top-nav { padding: 12px 16px; }
+    .page { padding: 16px; }
+    .card { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="top-nav">
+  <div class="nav-brand"><span>OTM</span> · Housing Coordination</div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('housing', this)">Housing Coordination</button>
+    <button class="nav-tab" onclick="showPage('field8', this)">Field 8 — Agent Stage Flow</button>
+    <button class="nav-tab" onclick="showPage('instructions', this)">SharePoint Instructions</button>
+  </div>
+  <div class="nav-right">Field Architecture · Build Spec</div>
+</div>
+
+<!-- ══════════════════════════════════ -->
+<!-- PAGE 1: HOUSING COORDINATION       -->
+<!-- ══════════════════════════════════ -->
+<div class="page active" id="page-housing">
+  <div class="card">
+    <div class="card-header">
+      <div><span class="card-title">Housing Coordination</span><span class="card-badge">New section</span></div>
+      <div class="card-right">9 fields · edit mode</div>
+    </div>
+
+    <!-- Field 1: Housing Intent -->
+    <div class="field-row">
+      <div class="field-label">
+        Housing Intent <span class="required">*</span>
+        <span class="badge badge-required">Always required</span>
+      </div>
+      <select id="housing-intent" onchange="applyHousingIntent()">
+        <option value="">— Select —</option>
+        <option value="origin-sale-only">Origin Sale Only</option>
+        <option value="destination-buy">Destination Purchase</option>
+        <option value="destination-rent">Destination Rental</option>
+        <option value="origin-and-destination">Origin Sale + Destination Purchase</option>
+        <option value="origin-sale-dest-rent">Origin Sale + Destination Rental</option>
+        <option value="no-transaction">No Housing Transaction</option>
+      </select>
+      <div class="field-note">Drives visibility of fields 2, 3, 4, 5, 6, and 7 below</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Fields 2 & 3: Agent Selection -->
+    <div class="two-col" style="margin-bottom:20px;">
+      <div class="col-l conditional-field hidden" id="field-origin-agent">
+        <div class="field-label" style="font-size:11px; color:#888; font-weight:500;">Origin Agent Selection <span style="color:#bbb; font-weight:400;">When origin sale</span></div>
+        <select id="origin-agent-select" onchange="applyAgentSelection()">
+          <option value="">— Select —</option>
+          <option value="tdg-network">TDG Network Agent</option>
+          <option value="external">External Agent</option>
+          <option value="no-agent">No Agent / Self-represented</option>
+        </select>
+        <div class="field-note">Enabled when intent includes origin sale</div>
+      </div>
+      <div class="col-r conditional-field hidden" id="field-dest-agent">
+        <div class="field-label" style="font-size:11px; color:#888; font-weight:500;">Destination Agent Selection <span style="color:#bbb; font-weight:400;">When buy or rent</span></div>
+        <select id="dest-agent-select" onchange="applyAgentSelection()">
+          <option value="">— Select —</option>
+          <option value="tdg-network">TDG Network Agent</option>
+          <option value="external">External Agent</option>
+          <option value="no-agent">No Agent / Self-represented</option>
+        </select>
+        <div class="field-note">Enabled when intent includes destination buy or rent</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Fields 4 & 5 -->
+    <div class="two-col" style="margin-bottom:20px;">
+      <div class="col-l conditional-field hidden" id="field-strategy-call" style="border-right:none; padding-right:24px;">
+        <div class="field-label" style="font-size:11px; color:#888; font-weight:500;">Housing Strategy Call Completed <span style="color:#bbb; font-weight:400;">Intent ≠ No Housing Transaction</span></div>
+        <label class="checkbox-row">
+          <input type="checkbox" id="strategy-call-cb">
+          <span class="checkbox-label">Completed</span>
+        </label>
+        <div class="field-note">Confirms housing coordination conversation on intro call</div>
+      </div>
+      <div class="col-r conditional-field hidden" id="field-re-transaction" style="border-left:none; padding-left:24px;">
+        <div class="field-label" style="font-size:11px; color:#888; font-weight:500;">RE Transaction Captured <span style="color:#bbb; font-weight:400;">At close of file</span> <span class="badge badge-eos">EOS KPI</span></div>
+        <select id="re-transaction-select">
+          <option value="">— Select —</option>
+          <option value="yes-origin">Yes — Origin Side</option>
+          <option value="yes-dest">Yes — Destination Side</option>
+          <option value="yes-both">Yes — Both Sides</option>
+          <option value="no">No Transaction Captured</option>
+        </select>
+        <div class="field-note">EOS KPI field — tracked at close</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Field 6: TDG Decline Reason -->
+    <div style="margin-bottom:20px;">
+      <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px; flex-wrap:wrap; gap:6px;">
+        <div class="field-label">TDG Decline Reason <span style="font-size:11px; color:#aaa; font-weight:400; margin-left:4px;">Only when External Agent selected</span></div>
+        <div class="multi-note">Multi-select — select all that apply</div>
+      </div>
+      <div class="two-col">
+        <div class="col-l conditional-field hidden" id="field-origin-decline">
+          <div style="font-size:11px; color:#888; margin-bottom:6px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">Origin Decline Reason <span class="badge badge-origin">Origin</span> <span style="color:#bbb; font-size:10px;">Origin = External</span></div>
+          <div class="tag-group">
+            <span class="tag" onclick="toggleTag(this,'origin')">Already engaged before TDG intro</span>
+            <span class="tag" onclick="toggleTag(this,'origin')">Team recommended agent</span>
+            <span class="tag" onclick="toggleTag(this,'origin')">Sponsor agent requirement</span>
+            <span class="tag" onclick="toggleTag(this,'origin')">Prior relationship</span>
+            <span class="tag" onclick="toggleTag(this,'origin')">Introduced too late</span>
+            <span class="tag" onclick="toggleTag(this,'origin')">Teammate referral</span>
+            <span class="tag" onclick="toggleTag(this,'origin')">Advisor referral</span>
+            <span class="tag" onclick="toggleTag(this,'origin')">Customer prefers independence</span>
+            <span class="tag" onclick="toggleTag(this,'origin')">Agent refused TDG coordination</span>
+            <span class="tag" onclick="toggleTag(this,'origin')">Other</span>
+            <span class="tag" onclick="toggleTag(this,'origin')">Unknown</span>
+          </div>
+          <div class="field-note">Why did the player, coach, or staff member use an external agent on the origin side?</div>
+        </div>
+        <div class="col-r conditional-field hidden" id="field-dest-decline">
+          <div style="font-size:11px; color:#888; margin-bottom:6px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">Destination Decline Reason <span class="badge badge-dest">Destination</span> <span style="color:#bbb; font-size:10px;">Destination = External</span></div>
+          <div class="tag-group">
+            <span class="tag" onclick="toggleTag(this,'dest')">Already engaged before TDG intro</span>
+            <span class="tag" onclick="toggleTag(this,'dest')">Team recommended agent</span>
+            <span class="tag" onclick="toggleTag(this,'dest')">Sponsor agent requirement</span>
+            <span class="tag" onclick="toggleTag(this,'dest')">Prior relationship</span>
+            <span class="tag" onclick="toggleTag(this,'dest')">Introduced too late</span>
+            <span class="tag" onclick="toggleTag(this,'dest')">Teammate referral</span>
+            <span class="tag" onclick="toggleTag(this,'dest')">Advisor referral</span>
+            <span class="tag" onclick="toggleTag(this,'dest')">Customer prefers independence</span>
+            <span class="tag" onclick="toggleTag(this,'dest')">Agent refused TDG coordination</span>
+            <span class="tag" onclick="toggleTag(this,'dest')">Other</span>
+            <span class="tag" onclick="toggleTag(this,'dest')">Unknown</span>
+          </div>
+          <div class="field-note">Why did the player, coach, or staff member use an external agent on the destination side?</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Field 7: RE Adoption Reason -->
+    <div>
+      <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px; flex-wrap:wrap; gap:6px;">
+        <div class="field-label">RE Adoption Reason <span style="font-size:11px; color:#aaa; font-weight:400; margin-left:4px;">Only when TDG Network Agent selected</span></div>
+        <div class="multi-note">Multi-select — select all that apply</div>
+      </div>
+      <div class="two-col">
+        <div class="col-l conditional-field hidden" id="field-origin-adoption">
+          <div style="font-size:11px; color:#888; margin-bottom:6px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">Origin Adoption Reason <span class="badge badge-origin">Origin</span> <span style="color:#bbb; font-size:10px;">Origin = TDG Network</span></div>
+          <div class="tag-group">
+            <span class="tag" onclick="toggleTag(this,'origin')">Closing rebate</span>
+            <span class="tag" onclick="toggleTag(this,'origin')">TDG coordination advantage</span>
+            <span class="tag" onclick="toggleTag(this,'origin')">Trusted TDG referral</span>
+            <span class="tag" onclick="toggleTag(this,'origin')">Speed of relocation</span>
+            <span class="tag" onclick="toggleTag(this,'origin')">Privacy and discretion</span>
+            <span class="tag" onclick="toggleTag(this,'origin')">Prior TDG success story</span>
+            <span class="tag" onclick="toggleTag(this,'origin')">Team recommendation</span>
+            <span class="tag" onclick="toggleTag(this,'origin')">Advisor recommendation</span>
+            <span class="tag" onclick="toggleTag(this,'origin')">One-stop relocation platform</span>
+            <span class="tag" onclick="toggleTag(this,'origin')">Other</span>
+          </div>
+          <div class="field-note">Why did the player, coach, or staff member use a TDG agent on the origin side?</div>
+        </div>
+        <div class="col-r conditional-field hidden" id="field-dest-adoption">
+          <div style="font-size:11px; color:#888; margin-bottom:6px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">Destination Adoption Reason <span class="badge badge-dest">Destination</span> <span style="color:#bbb; font-size:10px;">Destination = TDG Network</span></div>
+          <div class="tag-group">
+            <span class="tag" onclick="toggleTag(this,'dest')">Closing rebate</span>
+            <span class="tag" onclick="toggleTag(this,'dest')">TDG coordination advantage</span>
+            <span class="tag" onclick="toggleTag(this,'dest')">Trusted TDG referral</span>
+            <span class="tag" onclick="toggleTag(this,'dest')">Speed of relocation</span>
+            <span class="tag" onclick="toggleTag(this,'dest')">Privacy and discretion</span>
+            <span class="tag" onclick="toggleTag(this,'dest')">Prior TDG success story</span>
+            <span class="tag" onclick="toggleTag(this,'dest')">Team recommendation</span>
+            <span class="tag" onclick="toggleTag(this,'dest')">Advisor recommendation</span>
+            <span class="tag" onclick="toggleTag(this,'dest')">One-stop relocation platform</span>
+            <span class="tag" onclick="toggleTag(this,'dest')">Other</span>
+          </div>
+          <div class="field-note">Why did the player, coach, or staff member use a TDG agent on the destination side?</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════ -->
+<!-- PAGE 2: FIELD 8 STAGE FLOW         -->
+<!-- ══════════════════════════════════ -->
+<div class="page" id="page-field8">
+  <div class="card">
+    <div class="card-header">
+      <div style="display:flex; align-items:baseline; gap:16px; flex-wrap:wrap;">
+        <span class="card-title">External Agent Coordination Stage</span>
+        <span style="font-size:12px; color:#888;">Field 8</span>
+        <span style="font-size:12px; color:#888;">Status Flow</span>
+      </div>
+      <div class="card-right">SP Job · click a stage to set</div>
+    </div>
+
+    <div class="two-col" style="margin-bottom:20px;">
+      <div class="col-l">
+        <div class="field-label" style="font-size:11px; color:#888; font-weight:500;">Origin Agent Selection <span style="color:#bbb; font-weight:400;">When origin sale</span></div>
+        <select id="f8-origin-agent" onchange="applyF8Visibility()">
+          <option value="">— Select —</option>
+          <option value="tdg-network">TDG Network Agent</option>
+          <option value="external">External Agent</option>
+        </select>
+      </div>
+      <div class="col-r">
+        <div class="field-label" style="font-size:11px; color:#888; font-weight:500;">Destination Agent Selection <span style="color:#bbb; font-weight:400;">When buy or rent</span></div>
+        <select id="f8-dest-agent" onchange="applyF8Visibility()">
+          <option value="">— Select —</option>
+          <option value="tdg-network">TDG Network Agent</option>
+          <option value="external">External Agent</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:8px;">
+      <div class="field-label">External Agent Coordination Stage <span class="badge badge-conditional">Only when External Agent selected</span></div>
+      <div style="font-size:11px; color:#aaa; font-style:italic;">Status flow — not a picklist</div>
+    </div>
+
+    <div id="f8-origin-track" class="conditional-field hidden" style="margin-bottom:8px;">
+      <div class="track-label">Origin External Agent Stage <span class="badge badge-origin">Origin</span> <span class="track-cond">Origin = External</span></div>
+      <div class="stage-flow" id="origin-stages">
+        <span class="stage-node" onclick="setStage('origin',0)">Agent Identified</span>
+        <span class="arrow">→</span>
+        <span class="stage-node" onclick="setStage('origin',1)">Intro Requested</span>
+        <span class="arrow">→</span>
+        <span class="stage-node" onclick="setStage('origin',2)">Introduction Received</span>
+        <span class="arrow">→</span>
+        <span class="stage-node" onclick="setStage('origin',3)">Coordination Call Scheduled</span>
+        <span class="arrow">→</span>
+        <span class="stage-node" onclick="setStage('origin',4)">Agent Coordinated</span>
+        <span class="arrow">→</span>
+        <span class="stage-node" onclick="setStage('origin',5)">Agent Onboarded to OTM</span>
+        <span class="arrow">→</span>
+        <span class="stage-node declined" onclick="setStage('origin',6)">Agent Declined</span>
+      </div>
+      <div class="track-desc">Tracks OTM's coordination progress with the player's, coach's, or staff member's external origin agent</div>
+    </div>
+
+    <div class="track-divider"></div>
+
+    <div id="f8-dest-track" class="conditional-field hidden">
+      <div class="track-label">Destination External Agent Stage <span class="badge badge-dest">Destination</span> <span class="track-cond">Destination = External</span></div>
+      <div class="stage-flow" id="dest-stages">
+        <span class="stage-node" onclick="setStage('dest',0)">Agent Identified</span>
+        <span class="arrow">→</span>
+        <span class="stage-node" onclick="setStage('dest',1)">Intro Requested</span>
+        <span class="arrow">→</span>
+        <span class="stage-node" onclick="setStage('dest',2)">Introduction Received</span>
+        <span class="arrow">→</span>
+        <span class="stage-node" onclick="setStage('dest',3)">Coordination Call Scheduled</span>
+        <span class="arrow">→</span>
+        <span class="stage-node" onclick="setStage('dest',4)">Agent Coordinated</span>
+        <span class="arrow">→</span>
+        <span class="stage-node" onclick="setStage('dest',5)">Agent Onboarded to OTM</span>
+        <span class="arrow">→</span>
+        <span class="stage-node declined" onclick="setStage('dest',6)">Agent Declined</span>
+      </div>
+      <div class="track-desc">Tracks OTM's coordination progress with the player's, coach's, or staff member's external destination agent</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════ -->
+<!-- PAGE 3: SHAREPOINT INSTRUCTIONS   -->
+<!-- ══════════════════════════════════ -->
+<div class="page" id="page-instructions">
+  <div style="margin-bottom:24px;">
+    <h2 style="font-size:18px; font-weight:700; color:#1a1a1a; margin-bottom:6px;">How to publish on SharePoint</h2>
+    <p style="font-size:13px; color:#888; max-width:620px;">Embed this interactive page directly into your company SharePoint so colleagues click once and it opens live in their browser.</p>
+  </div>
+
+  <div class="divider-label">Part 1 — Upload the file to SharePoint</div>
+  <div class="instructions-grid">
+    <div class="step-card">
+      <div class="step-number">1</div>
+      <div class="step-title">Go to your SharePoint site</div>
+      <div class="step-body">Navigate to your Communication site or Company Wide site. Click <strong>Documents</strong> in the left nav to open the document library.</div>
+    </div>
+    <div class="step-card">
+      <div class="step-number">2</div>
+      <div class="step-title">Upload the HTML file</div>
+      <div class="step-body">Click <strong>Upload → Files</strong> and select <span class="code">OTM_Housing_Coordination.html</span> from your Downloads folder. Wait for it to appear in the library.
+        <div class="highlight">Keep the filename exactly as-is.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider-label">Part 2 — Create the page and embed</div>
+  <div class="full-step-card">
+    <div class="step-header"><div class="step-number">3</div><div class="step-title">Create a new SharePoint page</div></div>
+    <div class="step-body">
+      <ol>
+        <li>Click <strong>+ New → Page</strong> in the top toolbar</li>
+        <li>Choose <strong>Blank</strong> template → <strong>Create page</strong></li>
+        <li>Name it <span class="code">OTM Housing Coordination Fields</span></li>
+      </ol>
+    </div>
+  </div>
+  <div class="full-step-card">
+    <div class="step-header"><div class="step-number">4</div><div class="step-title">Add the Embed web part</div></div>
+    <div class="step-body">
+      <ol>
+        <li>Click the <strong>Toolbox icon</strong> (right side panel) → <strong>See all web parts</strong></li>
+        <li>Search for and click <strong>Embed</strong></li>
+        <li>In the Embed panel on the right, paste this URL into the address box:<br><span class="code">https://dingmangroup.github.io/otm-housing/OTM_Housing_Coordination.html</span></li>
+        <li>Click <strong>Apply</strong> — the interactive page will render live</li>
+      </ol>
+      <div class="tip">Use the URL method, not the code paste method. SharePoint accepts iframe URLs directly.</div>
+    </div>
+  </div>
+
+  <div class="divider-label">Part 3 — Publish and share</div>
+  <div class="instructions-grid">
+    <div class="step-card">
+      <div class="step-number">5</div>
+      <div class="step-title">Publish the page</div>
+      <div class="step-body">Click <strong>Publish</strong> in the top right. The page goes live instantly for everyone in your org.
+        <div class="tip">Use <strong>Preview</strong> first to confirm the embed renders correctly.</div>
+      </div>
+    </div>
+    <div class="step-card">
+      <div class="step-number">6</div>
+      <div class="step-title">Share the link</div>
+      <div class="step-body">Copy the SharePoint page URL from your browser and send it via Teams, email, or Slack. Colleagues click once — no download required.
+        <div class="highlight">The GitHub URL above also works as a standalone link you can share directly.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function showPage(id, btn) {
+    document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+    document.querySelectorAll('.nav-tab').forEach(function(t) { t.classList.remove('active'); });
+    document.getElementById('page-' + id).classList.add('active');
+    if (btn) btn.classList.add('active');
+  }
+
+  function show(id) { var el = document.getElementById(id); if (el) el.classList.remove('hidden'); }
+  function hide(id) { var el = document.getElementById(id); if (el) el.classList.add('hidden'); }
+
+  function applyHousingIntent() {
+    var val = document.getElementById('housing-intent').value;
+    var hasOrigin = ['origin-sale-only','origin-and-destination','origin-sale-dest-rent'].indexOf(val) > -1;
+    var hasDest = ['destination-buy','destination-rent','origin-and-destination','origin-sale-dest-rent'].indexOf(val) > -1;
+    var hasTransaction = val !== '' && val !== 'no-transaction';
+
+    if (hasOrigin) show('field-origin-agent'); else hide('field-origin-agent');
+    if (hasDest) show('field-dest-agent'); else hide('field-dest-agent');
+    if (hasTransaction) { show('field-strategy-call'); show('field-re-transaction'); } else { hide('field-strategy-call'); hide('field-re-transaction'); }
+
+    applyAgentSelection();
+  }
+
+  function applyAgentSelection() {
+    var originAgent = document.getElementById('origin-agent-select').value;
+    var destAgent = document.getElementById('dest-agent-select').value;
+    var intentVal = document.getElementById('housing-intent').value;
+    var hasOrigin = ['origin-sale-only','origin-and-destination','origin-sale-dest-rent'].indexOf(intentVal) > -1;
+    var hasDest = ['destination-buy','destination-rent','origin-and-destination','origin-sale-dest-rent'].indexOf(intentVal) > -1;
+
+    if (hasOrigin && originAgent === 'external') show('field-origin-decline'); else hide('field-origin-decline');
+    if (hasDest && destAgent === 'external') show('field-dest-decline'); else hide('field-dest-decline');
+    if (hasOrigin && originAgent === 'tdg-network') show('field-origin-adoption'); else hide('field-origin-adoption');
+    if (hasDest && destAgent === 'tdg-network') show('field-dest-adoption'); else hide('field-dest-adoption');
+  }
+
+  function applyF8Visibility() {
+    var origin = document.getElementById('f8-origin-agent').value;
+    var dest = document.getElementById('f8-dest-agent').value;
+    if (origin === 'external') show('f8-origin-track'); else hide('f8-origin-track');
+    if (dest === 'external') show('f8-dest-track'); else hide('f8-dest-track');
+  }
+
+  function toggleTag(el, side) {
+    var cls = side === 'origin' ? 'selected-origin' : 'selected-dest';
+    el.classList.toggle(cls);
+  }
+
+  function setStage(track, idx) {
+    var containerId = track === 'origin' ? 'origin-stages' : 'dest-stages';
+    var cls = track === 'origin' ? 'active' : 'active-dest';
+    var nodes = document.getElementById(containerId).querySelectorAll('.stage-node');
+    nodes.forEach(function(n) { n.classList.remove('active', 'active-dest'); });
+    nodes[idx].classList.add(cls);
+  }
+</script>
+</body>
+</html>
